@@ -1,6 +1,5 @@
 # Docker 사용법
 WSL: Ubuntu가 설치되어 있지 않다면 api-test01의 README.md을 참고하여 환경을 세팅하세요.
-본 문서는 api-test03을 기반으로 합니다.
 ## 새로운 환경 세팅
 - docker desktop 설치
 - setting > Resources > WSL integration
@@ -171,6 +170,118 @@ docker compose logs -f
 
 # 전체 스택 종료 및 정리
 docker compose down
+```
+
+# Docker 실습 예제
+## nginx
+hub.docker.com 에서 nginx 검색, 설치수가 1B+인 것에 접속
+
+Tag에서 latest > 명령어 copy
+
+터미널에 copy한 명령어 붙여넣기
+```
+docker pull <해당 코드>
+
+# 이미지 확인
+docker image ls
+
+# 이미지 실행
+docker run -d -p 8080:80 nginx
+```
+docker desktop > containers 에서 해당 이미지를 확인할 수 있습니다.
+
+## Docker를 활용한 OCR PDF 처리
+jbarlow83/ocrmypdf 이미지를 기반으로 한국어 언어 팩을 추가한 커스텀 이미지를 빌드하고, 실제 OCR을 실행하여 결과물을 생성합니다.
+```
+# 프로젝트 디렉토리로 이동
+cd ~/docker-class/docker-basics/03-Pull-from-DockerHub-and-Run-Docker-Images
+
+# Dockerfile 생성
+code Dockerfile
+
+# Dockerfile 내용 작성
+
+# 공식 OCRmyPDF 이미지를 기반으로 사용
+FROM jbarlow83/ocrmypdf
+
+# 루트 사용자로 전환
+USER root
+
+# Tesseract의 한국어 언어 데이터 파일을 설치
+RUN apt-get update && \
+    apt-get install -y tesseract-ocr-kor && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# 커스텀 Docker 이미지 빌드
+docker build -t my-ocrmypdf-kor .
+
+# OCR 실행을 위한 PDF 파일 준비
+pdf 파일을 준비하고 input.pdf 로 해당 폴더에 저장합니다.
+
+# OCR 실행 (한국어 + 영어)
+docker run --rm -v "$(pwd):/data" my-ocrmypdf-kor -l kor+eng /data/input.pdf /data/output.pdf
+
+# 실행 확인
+ls -la output.pdf
+```
+
+## Docker를 활용한 Crawl4AI 웹 크롤러 설치, 테스트
+unclecode/crawl4ai 이미지를 기반으로 웹 크롤러 컨테이너를 실행하고, API를 통해 실제 크롤링을 테스트합니다.
+```
+# 프로젝트 디렉토리로 이동
+cd ~/docker-class/docker-basics/03-Pull-from-DockerHub-and-Run-Docker-Images
+
+# Crawl4AI Docker 이미지 Pull
+docker pull unclecode/crawl4ai:latest
+
+# Crawl4AI 컨테이너 실행
+docker run -d \
+  -p 11235:11235 \
+  --name crawl4ai \
+  --shm-size=3g \
+  unclecode/crawl4ai:latest \
+  gunicorn server:app --bind 0.0.0.0:11235 -w 1 -k uvicorn.workers.UvicornWorker
+
+# 컨테이너 실행 상태 확인
+docker ps -f name=crawl4ai
+
+# 서비스 헬스체크
+curl http://localhost:11235/health
+
+# Web UI 접속 (선택사항)
+# 브라우저에서 http://localhost:11235/playground 접속
+
+# crawl4ai 토큰 확인
+docker logs crawl4ai | grep "CRAWL4AI_API_TOKEN"
+
+# 출력 로그에서 토큰값 확인
+CRAWL4AI_API_TOKEN
+
+# 토큰 입력
+TOKEN="fccd4f4b0ab626a782201d16f2bb3806439d2fb23a6d36f6e57beb00aa387af3"
+
+# 기본 크롤링 API 테스트
+curl -X POST http://localhost:11235/crawl \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"urls": ["https://lolchess.gg/items/set17"]}'
+
+# 실시간 스트리밍 크롤링 테스트
+curl -N -X POST http://localhost:11235/crawl/stream \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"urls": ["https://lolchess.gg/items/set17"], "crawler_config": {"type": "CrawlerRunConfig", "params": {"stream": true}}}'
+
+# 컨테이너 로그 확인
+docker logs crawl4ai
+
+# 실시간 로그 확인
+docker logs -f crawl4ai
+
+# 컨테이너 종료 및 삭제 (테스트 종료 후)
+docker stop crawl4ai
+docker rm crawl4ai
 ```
 
 # 추가 개념
