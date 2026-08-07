@@ -51,6 +51,7 @@ Docker Desktop > Settings > Docker Engine
 변경 후 restart
 
 ## WSL2 메모리 제한 설정
+반드시 본인 PC 사양을 확인하여 맞는 값으로 적용하세요.
 ```
 C:\Users\<username>\.wslconfig 파일 생성
 ```
