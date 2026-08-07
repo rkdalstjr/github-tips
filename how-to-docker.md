@@ -22,6 +22,10 @@ docker ai version         # Docker AI Agent (Gordon)
 
 ## 공유 네트워크 생성
 ```
+sudo usermod -aG docker $USER
+exit
+wsl
+
 exec sudo su -l $USER
 docker network create shared-net
 docker network ls | grep shared-net
